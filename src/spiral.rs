@@ -1,5 +1,6 @@
+use crate::camera::ProjectPoint;
 use crate::line::Line;
-use crate::point2d::Point2d;
+use crate::point::Point3d;
 use crate::tools::Lerp;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::pixels;
@@ -34,7 +35,7 @@ impl Spiral {
         }
     }
 
-    pub fn compute_segments(&mut self, dt: f32) {
+    pub fn compute_segment(&mut self, dt: f32) {
         self.offset += dt * Self::SPEED;
         if self.offset > Self::PERIOD {
             self.offset -= Self::PERIOD;
@@ -49,64 +50,53 @@ impl Spiral {
             );
 
         self.segment.clear();
-        self.segment.push(Line {
-            start: get_point(0.0, self.factor, self.angle_offset, Self::G_RATE),
-            end: get_point(theta / 2.0, self.factor, self.angle_offset, Self::G_RATE),
-        });
+
+        let start = get_point(0.0, self.factor, self.angle_offset, Self::G_RATE);
+        let end = get_point(theta / 2.0, self.factor, self.angle_offset, Self::G_RATE);
+        let alpha = get_alpha(&start, self.factor, Self::G_RATE);
+        self.segment.push(Line { start, end, alpha });
+
         while theta < Self::THETA_MAX {
             let theta_old = theta;
             theta += d_theta(theta, Self::LINE_LENGTH, Self::G_RATE, self.factor);
 
-            self.segment.push(Line {
-                start: get_point(theta_old, self.factor, self.angle_offset, Self::G_RATE),
-                end: get_point(
-                    (theta_old + theta) / 2.0,
-                    self.factor,
-                    self.angle_offset,
-                    Self::G_RATE,
-                ),
-            });
+            let start = get_point(theta_old, self.factor, self.angle_offset, Self::G_RATE);
+            let end = get_point(
+                (theta_old + theta) / 2.0,
+                self.factor,
+                self.angle_offset,
+                Self::G_RATE,
+            );
+            let alpha = get_alpha(&start, self.factor, Self::G_RATE);
+            self.segment.push(Line { start, end, alpha });
         }
     }
 
-    pub fn render<T: DrawRenderer>(&mut self, canvas: &mut T) {
+    pub fn render<T: DrawRenderer, U: ProjectPoint>(
+        &self,
+        canvas: &mut T,
+        camera: &U,
+    ) -> Result<(), String> {
         for line in &self.segment {
-            let color = pixels::Color::BLACK.lerp(&self.foreground, line.start.alpha);
-            canvas.line(
-                line.start.x as i16,
-                line.start.y as i16,
-                line.end.x as i16,
-                line.end.y as i16,
-                color,
-            );
+            let color = pixels::Color::BLACK.lerp(&self.foreground, line.alpha);
+            line.draw(canvas, camera, color)?;
         }
+        Ok(())
     }
 }
 
-fn get_point(theta: f32, factor: f32, angle_offset: f32, rate: f32) -> Point2d {
+fn get_alpha(point: &Point3d, factor: f32, rate: f32) -> f32 {
+    f32::min(
+        1.0,
+        ((point.y * factor / rate * 0.1 + 0.02 - point.z) * 40.0).atan() * 0.35 + 0.65,
+    )
+}
+
+fn get_point(theta: f32, factor: f32, angle_offset: f32, rate: f32) -> Point3d {
     let x = theta * factor * (theta + angle_offset).cos();
     let y = rate * theta;
     let z = -theta * factor * (theta + angle_offset).sin();
-
-    let alpha = f32::min(
-        1.0,
-        ((y * factor / rate * 0.1 + 0.02 - z) * 40.0).atan() * 0.35 + 0.65,
-    );
-    project2d(x, y, z, alpha)
-}
-
-fn project2d(x: f32, y: f32, z: f32, a: f32) -> Point2d {
-    const Y_SCREEN_OFFSET: f32 = 300.0;
-    const X_SCREEN_OFFSET: f32 = 240.0;
-    const X_SCREEN_SCALE: f32 = 700.0;
-    const Y_SCREEN_SCALE: f32 = 700.0;
-    const Y_CAMERA: f32 = 1.5;
-    const Z_CAMERA: f32 = -5.0;
-    Point2d {
-        x: X_SCREEN_OFFSET + X_SCREEN_SCALE * (x / (z - Z_CAMERA)),
-        y: Y_SCREEN_OFFSET + Y_SCREEN_SCALE * ((y - Y_CAMERA) / (z - Z_CAMERA)),
-        alpha: a,
-    }
+    Point3d { x, y, z }
 }
 
 fn d_theta(theta: f32, l_line_length: f32, rate: f32, factor: f32) -> f32 {
