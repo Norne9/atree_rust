@@ -42,7 +42,7 @@ impl Spiral {
         }
 
         let mut theta = Self::THETA_MIN
-            + d_theta(
+            - d_theta(
                 Self::THETA_MIN,
                 Self::LINE_SPACING * self.offset / Self::PERIOD,
                 Self::G_RATE,
@@ -50,27 +50,17 @@ impl Spiral {
             );
 
         self.segment.clear();
-        let start = get_point(
-            Self::THETA_MIN,
-            self.factor,
-            self.angle_offset,
-            Self::G_RATE,
-        );
-        let end = get_point(theta / 2.0, self.factor, self.angle_offset, Self::G_RATE);
-        let alpha = get_alpha(&start, self.factor, Self::G_RATE);
-        self.segment.push(Line { start, end, alpha });
 
         while theta < Self::THETA_MAX {
-            let theta_old = theta;
+            let theta_old = f32::max(theta, Self::THETA_MIN);
             theta += d_theta(theta, Self::LINE_LENGTH, Self::G_RATE, self.factor);
+            let theta_end = (theta_old + f32::max(theta, Self::THETA_MIN)) / 2.0;
+            if theta_end < Self::THETA_MIN {
+                continue;
+            }
 
             let start = get_point(theta_old, self.factor, self.angle_offset, Self::G_RATE);
-            let end = get_point(
-                (theta_old + theta) / 2.0,
-                self.factor,
-                self.angle_offset,
-                Self::G_RATE,
-            );
+            let end = get_point(theta_end, self.factor, self.angle_offset, Self::G_RATE);
             let alpha = get_alpha(&start, self.factor, Self::G_RATE);
             self.segment.push(Line { start, end, alpha });
         }
