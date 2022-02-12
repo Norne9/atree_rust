@@ -18,7 +18,7 @@ impl Line {
     ) -> Result<(), String> {
         let start = camera.project(&self.start);
         let end = camera.project(&self.end);
-        canvas.line(
+        canvas.aa_line(
             start.x.round() as i16,
             start.y.round() as i16,
             end.x.round() as i16,

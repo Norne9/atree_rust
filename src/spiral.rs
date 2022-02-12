@@ -54,7 +54,10 @@ impl Spiral {
         while theta < Self::THETA_MAX {
             let theta_old = f32::max(theta, Self::THETA_MIN);
             theta += d_theta(theta, Self::LINE_LENGTH, Self::G_RATE, self.factor);
-            let theta_end = (theta_old + f32::max(theta, Self::THETA_MIN)) / 2.0;
+            let theta_end = f32::min(
+                (theta_old + f32::max(theta, Self::THETA_MIN)) / 2.0,
+                Self::THETA_MAX,
+            );
             if theta_end < Self::THETA_MIN {
                 continue;
             }
