@@ -16,12 +16,12 @@ pub struct Spiral {
 impl Spiral {
     const THETA_MIN: f32 = 0.0;
     const THETA_MAX: f32 = 8.0 * std::f32::consts::PI;
-    const PERIOD: f32 = 20.0;
+    const PERIOD: f32 = Self::THETA_MAX;
     const LINE_SPACING: f32 = 1.5 / 12.0;
     const LINE_LENGTH: f32 = Self::LINE_SPACING / 2.0;
     const G_RATE: f32 = 1.0 / (2.0 * std::f32::consts::PI);
     const G_FACTOR: f32 = Self::G_RATE / 3.0;
-    const SPEED: f32 = 12.0;
+    const SPEED: f32 = Self::PERIOD * 1.5;
 
     pub fn new(foreground: pixels::Color, angle_offset: f32, factor: f32) -> Self {
         let angle_offset = angle_offset * std::f32::consts::PI;
@@ -50,8 +50,12 @@ impl Spiral {
             );
 
         self.segment.clear();
-
-        let start = get_point(0.0, self.factor, self.angle_offset, Self::G_RATE);
+        let start = get_point(
+            Self::THETA_MIN,
+            self.factor,
+            self.angle_offset,
+            Self::G_RATE,
+        );
         let end = get_point(theta / 2.0, self.factor, self.angle_offset, Self::G_RATE);
         let alpha = get_alpha(&start, self.factor, Self::G_RATE);
         self.segment.push(Line { start, end, alpha });
