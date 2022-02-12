@@ -4,6 +4,7 @@ use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels;
 use std::error::Error;
+use std::time::Instant;
 
 struct Point {
     x: f32,
@@ -20,18 +21,19 @@ struct Spiral {
     foreground: pixels::Color,
     angle_offset: f32,
     factor: f32,
-    offset: usize,
-    segments: Vec<Vec<Line>>,
+    offset: f32,
+    segment: Vec<Line>,
 }
 
 impl Spiral {
     const THETA_MIN: f32 = 0.0;
     const THETA_MAX: f32 = 8.0 * std::f32::consts::PI;
-    const PERIOD: usize = 20;
-    const LINE_SPACING: f32 = 1.0 / 12.0;
+    const PERIOD: f32 = 20.0;
+    const LINE_SPACING: f32 = 1.5 / 12.0;
     const LINE_LENGTH: f32 = Self::LINE_SPACING / 2.0;
     const G_RATE: f32 = 1.0 / (2.0 * std::f32::consts::PI);
     const G_FACTOR: f32 = Self::G_RATE / 3.0;
+    const SPEED: f32 = 12.0;
 
     fn new(foreground: pixels::Color, angle_offset: f32, factor: f32) -> Self {
         let angle_offset = angle_offset * std::f32::consts::PI;
@@ -40,44 +42,48 @@ impl Spiral {
             foreground,
             angle_offset,
             factor,
-            offset: 0,
-            segments: Self::compute_segments(factor, angle_offset),
+            offset: 0.0,
+            segment: vec![],
         }
     }
 
-    fn compute_segments(factor: f32, angle_offset: f32) -> Vec<Vec<Line>> {
-        let mut segments = vec![];
-        for offset in 0..(Self::PERIOD as i32) {
-            let offset = -offset;
-            let mut lines = vec![];
-            let mut theta = Self::THETA_MIN
-                + d_theta(
-                    Self::THETA_MIN,
-                    Self::LINE_SPACING * (offset as f32) / (Self::PERIOD as f32),
+    fn compute_segments(&mut self, dt: f32) {
+        self.offset += dt * Self::SPEED;
+        if self.offset > Self::PERIOD {
+            self.offset -= Self::PERIOD;
+        }
+
+        let mut theta = Self::THETA_MIN
+            + d_theta(
+                Self::THETA_MIN,
+                Self::LINE_SPACING * self.offset / Self::PERIOD,
+                Self::G_RATE,
+                self.factor,
+            );
+
+        self.segment.clear();
+        self.segment.push(Line {
+            start: get_point(0.0, self.factor, self.angle_offset, Self::G_RATE),
+            end: get_point(theta / 2.0, self.factor, self.angle_offset, Self::G_RATE),
+        });
+        while theta < Self::THETA_MAX {
+            let theta_old = theta;
+            theta += d_theta(theta, Self::LINE_LENGTH, Self::G_RATE, self.factor);
+
+            self.segment.push(Line {
+                start: get_point(theta_old, self.factor, self.angle_offset, Self::G_RATE),
+                end: get_point(
+                    (theta_old + theta) / 2.0,
+                    self.factor,
+                    self.angle_offset,
                     Self::G_RATE,
-                    factor,
-                );
-            while theta < Self::THETA_MAX {
-                let theta_old = theta;
-                theta += d_theta(theta, Self::LINE_LENGTH, Self::G_RATE, factor);
-
-                lines.push(Line {
-                    start: get_point(theta_old, factor, angle_offset, Self::G_RATE),
-                    end: get_point(
-                        (theta_old + theta) / 2.0,
-                        factor,
-                        angle_offset,
-                        Self::G_RATE,
-                    ),
-                });
-            }
-            segments.push(lines);
+                ),
+            });
         }
-        segments
     }
 
-    fn draw_segment<T: DrawRenderer>(&self, canvas: &mut T, segment: &[Line]) {
-        for line in segment {
+    fn render<T: DrawRenderer>(&mut self, canvas: &mut T) {
+        for line in &self.segment {
             let color = pixels::Color::BLACK.lerp(&self.foreground, line.start.alpha);
             canvas.line(
                 line.start.x as i16,
@@ -87,12 +93,6 @@ impl Spiral {
                 color,
             );
         }
-    }
-
-    fn render<T: DrawRenderer>(&mut self, canvas: &mut T) {
-        self.offset += 1;
-        self.offset %= Self::PERIOD;
-        self.draw_segment(canvas, &self.segments[self.offset]);
     }
 }
 
@@ -166,6 +166,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     ]
     .map(|(c, a, f)| Spiral::new(pixels::Color::from_u32(&p_fmt, c), a, f));
 
+    let mut timer = Instant::now();
+
     'main: loop {
         for event in events.poll_iter() {
             match event {
@@ -177,10 +179,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 _ => {}
             }
         }
+
+        // dt calculation
+        let dt = timer.elapsed().as_secs_f32();
+        timer = Instant::now();
+
         canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
         canvas.clear();
-        //canvas.line(1, 1, 100, 100, pixels::Color::RGB(200, 100, 100));
         for s in &mut spirals {
+            s.compute_segments(dt);
             s.render(&mut canvas);
         }
         canvas.present();
