@@ -10,7 +10,7 @@ use spiral::Spiral;
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    const WIDTH: f32 = 480.0;
+    const WIDTH: f32 = 600.0;
     const HEIGHT: f32 = 800.0;
 
     request_new_screen_size(WIDTH, HEIGHT);
@@ -25,7 +25,7 @@ async fn main() {
     ]
         .map(|(c, a, f)| Spiral::new(Color::from_hex(c), a, f));
 
-    let mut camera = Camera::new(WIDTH, HEIGHT, 1.0, 2.1, -5.0);
+    let mut camera = Camera::new(10.0, 10.0, 1.0, 2.1, -5.0);
 
     loop {
         clear_background(BLACK);
