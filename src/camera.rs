@@ -7,6 +7,8 @@ pub struct Camera {
     scale: f32,
     y_camera: f32,
     z_camera: f32,
+    width: f32,
+    height: f32
 }
 
 pub trait ProjectPoint {
@@ -14,21 +16,25 @@ pub trait ProjectPoint {
 }
 
 impl Camera {
-    pub fn new(width: u32, height: u32, scale: f32, y_pos: f32, z_pos: f32) -> Self {
+    pub fn new(width: f32, height: f32, scale: f32, y_pos: f32, z_pos: f32) -> Self {
         Self {
-            y_screen_offset: (height as f32) / 2.0,
-            x_screen_offset: (width as f32) / 2.0,
-            screen_scale: (width.max(height) as f32) / scale,
+            y_screen_offset: height / 2.0,
+            x_screen_offset: width / 2.0,
+            screen_scale: width.max(height)  / scale,
             scale,
             y_camera: y_pos,
             z_camera: z_pos,
+            width, height
         }
     }
 
-    pub fn resize(&mut self, width: i32, height: i32) {
-        self.y_screen_offset = (height as f32) / 2.0;
-        self.x_screen_offset = (width as f32) / 2.0;
-        self.screen_scale = (width.max(height) as f32) / self.scale;
+    pub fn resize(&mut self, width: f32, height: f32) {
+        if (self.width - width).abs() + (self.height - height).abs() < 1.0 {
+            return;
+        }
+        self.y_screen_offset = height / 2.0;
+        self.x_screen_offset = width / 2.0;
+        self.screen_scale = width.max(height) / self.scale;
     }
 }
 

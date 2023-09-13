@@ -1,12 +1,10 @@
 use crate::camera::ProjectPoint;
 use crate::line::Line;
 use crate::point::Point3d;
-use crate::tools::Lerp;
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::pixels;
+use macroquad::prelude::*;
 
 pub struct Spiral {
-    foreground: pixels::Color,
+    foreground: Color,
     angle_offset: f32,
     factor: f32,
     offset: f32,
@@ -23,7 +21,7 @@ impl Spiral {
     const G_FACTOR: f32 = Self::G_RATE / 3.0;
     const SPEED: f32 = Self::PERIOD * 1.5;
 
-    pub fn new(foreground: pixels::Color, angle_offset: f32, factor: f32) -> Self {
+    pub fn new(foreground: Color, angle_offset: f32, factor: f32) -> Self {
         let angle_offset = angle_offset * std::f32::consts::PI;
         let factor = factor * Self::G_FACTOR;
         Self {
@@ -69,16 +67,13 @@ impl Spiral {
         }
     }
 
-    pub fn render<T: DrawRenderer, U: ProjectPoint>(
+    pub fn render<U: ProjectPoint>(
         &self,
-        canvas: &mut T,
         camera: &U,
-    ) -> Result<(), String> {
+    ) {
         for line in &self.segment {
-            let color = pixels::Color::BLACK.lerp(&self.foreground, line.alpha);
-            line.draw(canvas, camera, color)?;
+            line.draw(camera, self.foreground);
         }
-        Ok(())
     }
 }
 

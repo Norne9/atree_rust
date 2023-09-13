@@ -1,7 +1,6 @@
 use crate::camera::ProjectPoint;
 use crate::point::Point3d;
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::pixels::Color;
+use macroquad::prelude::*;
 
 pub struct Line {
     pub start: Point3d,
@@ -10,20 +9,14 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn draw<T: DrawRenderer, U: ProjectPoint>(
+    pub fn draw<U: ProjectPoint>(
         &self,
-        canvas: &mut T,
         camera: &U,
         color: Color,
-    ) -> Result<(), String> {
+    ) {
         let start = camera.project(&self.start);
         let end = camera.project(&self.end);
-        canvas.aa_line(
-            start.x.round() as i16,
-            start.y.round() as i16,
-            end.x.round() as i16,
-            end.y.round() as i16,
-            color,
-        )
+        let color = Color::new(color.r, color.g, color.b, self.alpha);
+        draw_line(start.x, start.y, end.x, end.y, 2.0, color);
     }
 }
